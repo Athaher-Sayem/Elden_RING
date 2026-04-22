@@ -1,213 +1,450 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Elden Ring DBMS - Character Database</title>
-    <link rel="stylesheet" href="/static/style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Elden Ring DBMS</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --gold: #c9a84c;
+      --gold-light: #f0d080;
+      --bg: #0a0806;
+      --bg2: #110e09;
+      --bg3: #1a1510;
+      --text: #e8dcc8;
+      --text-dim: #8a7a60;
+      --red: #8b2020;
+      --border: #2a2218;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Crimson Text', serif;
+      min-height: 100vh;
+    }
+
+    /* NAV */
+    nav {
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .nav-brand {
+      font-family: 'Cinzel', serif;
+      font-size: 1.2rem;
+      color: var(--gold);
+      text-decoration: none;
+      letter-spacing: 2px;
+    }
+    .nav-links { display: flex; gap: 1.5rem; }
+    .nav-links a {
+      color: var(--text-dim);
+      text-decoration: none;
+      font-family: 'Cinzel', serif;
+      font-size: 0.78rem;
+      letter-spacing: 1px;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--gold); }
+
+    /* HERO */
+    .hero {
+      text-align: center;
+      padding: 4rem 2rem 2rem;
+      background: radial-gradient(ellipse at top, #1c1508 0%, var(--bg) 70%);
+    }
+    .hero h1 {
+      font-family: 'Cinzel', serif;
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      color: var(--gold);
+      letter-spacing: 4px;
+      text-shadow: 0 0 40px rgba(201,168,76,0.3);
+      margin-bottom: 0.5rem;
+    }
+    .hero p { color: var(--text-dim); font-size: 1.1rem; font-style: italic; }
+
+    /* STATS BAR */
+    #stats-bar {
+      display: flex;
+      justify-content: center;
+      gap: 2.5rem;
+      padding: 1.2rem 2rem;
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .stat-item { text-align: center; }
+    .stat-item .num {
+      font-family: 'Cinzel', serif;
+      font-size: 1.6rem;
+      color: var(--gold);
+    }
+    .stat-item .label { font-size: 0.75rem; color: var(--text-dim); letter-spacing: 1px; }
+
+    /* CONTROLS */
+    .controls {
+      max-width: 1200px;
+      margin: 2rem auto 1rem;
+      padding: 0 1.5rem;
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .search-wrap { position: relative; flex: 1; min-width: 220px; }
+    .search-wrap input {
+      width: 100%;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.65rem 1rem 0.65rem 2.5rem;
+      font-family: 'Crimson Text', serif;
+      font-size: 1rem;
+      border-radius: 4px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .search-wrap input:focus { border-color: var(--gold); }
+    .search-wrap::before {
+      content: '⚔';
+      position: absolute;
+      left: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-dim);
+      font-size: 0.9rem;
+    }
+    select {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.65rem 1rem;
+      font-family: 'Crimson Text', serif;
+      font-size: 1rem;
+      border-radius: 4px;
+      outline: none;
+      cursor: pointer;
+    }
+    select:focus { border-color: var(--gold); }
+    .btn-add {
+      background: var(--gold);
+      color: #000;
+      border: none;
+      padding: 0.65rem 1.4rem;
+      font-family: 'Cinzel', serif;
+      font-size: 0.8rem;
+      letter-spacing: 1px;
+      border-radius: 4px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: background 0.2s;
+    }
+    .btn-add:hover { background: var(--gold-light); }
+
+    /* GRID */
+    #characters-grid {
+      max-width: 1200px;
+      margin: 0 auto 4rem;
+      padding: 0 1.5rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 1.5rem;
+    }
+
+    /* CARD */
+    .char-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+      transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+      cursor: pointer;
+      animation: fadeIn 0.4s ease both;
+    }
+    .char-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--gold);
+      box-shadow: 0 8px 32px rgba(201,168,76,0.12);
+    }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+
+    .card-img {
+      width: 100%;
+      height: 180px;
+      object-fit: cover;
+      display: block;
+      background: var(--bg3);
+    }
+    /* Fallback when image fails */
+    .card-img-placeholder {
+      width: 100%;
+      height: 180px;
+      background: linear-gradient(135deg, var(--bg3) 0%, #221c10 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3rem;
+      color: var(--text-dim);
+    }
+
+    .card-body { padding: 1rem; }
+    .card-name {
+      font-family: 'Cinzel', serif;
+      font-size: 1rem;
+      color: var(--gold);
+      margin-bottom: 0.15rem;
+    }
+    .card-title { font-size: 0.85rem; color: var(--text-dim); font-style: italic; margin-bottom: 0.75rem; }
+
+    .card-stats { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+    .stat-pill {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 0.2rem 0.6rem;
+      font-size: 0.72rem;
+      color: var(--text-dim);
+    }
+    .stat-pill span { color: var(--gold-light); font-weight: 600; }
+
+    .card-rating {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      margin-bottom: 0.75rem;
+    }
+    .stars { color: var(--gold); }
+
+    .card-actions { display: flex; gap: 0.5rem; }
+    .btn-view, .btn-edit, .btn-del {
+      flex: 1;
+      padding: 0.45rem;
+      border: 1px solid;
+      border-radius: 4px;
+      font-family: 'Cinzel', serif;
+      font-size: 0.68rem;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .btn-view { border-color: var(--gold); color: var(--gold); background: transparent; }
+    .btn-view:hover { background: var(--gold); color: #000; }
+    .btn-edit { border-color: #5a7a5a; color: #5a7a5a; background: transparent; }
+    .btn-edit:hover { background: #5a7a5a; color: #fff; }
+    .btn-del { border-color: var(--red); color: var(--red); background: transparent; }
+    .btn-del:hover { background: var(--red); color: #fff; }
+
+    /* LOADING / EMPTY / ERROR */
+    .state-msg {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 4rem 2rem;
+      color: var(--text-dim);
+      font-family: 'Cinzel', serif;
+      font-size: 1rem;
+      letter-spacing: 1px;
+    }
+    .state-msg .icon { font-size: 2.5rem; margin-bottom: 1rem; display: block; }
+
+    /* TOAST */
+    #toast {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      background: var(--gold);
+      color: #000;
+      padding: 0.75rem 1.4rem;
+      border-radius: 4px;
+      font-family: 'Cinzel', serif;
+      font-size: 0.8rem;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: all 0.3s;
+      pointer-events: none;
+      z-index: 999;
+    }
+    #toast.show { opacity: 1; transform: translateY(0); }
+    #toast.error { background: var(--red); color: #fff; }
+  </style>
 </head>
 <body>
 
-<nav class="navbar">
-    <div class="nav-container">
-        <h1 class="nav-title">⚔ ELDEN RING DBMS</h1>
-        <ul class="nav-menu">
-            <li><a href="/" class="nav-link active">Home</a></li>
-            <li><a href="/add-character" class="nav-link">Add Character</a></li>
-            <li><a href="/reviews" class="nav-link">Reviews</a></li>
-            <li><a href="/game-theory" class="nav-link">Battle Arena</a></li>
-            <li><a href="/analytics" class="nav-link">Analytics</a></li>
-        </ul>
-    </div>
+<nav>
+  <a class="nav-brand" href="/">⚔ ELDEN RING DBMS</a>
+  <div class="nav-links">
+    <a href="/">Home</a>
+    <a href="/reviews">Reviews</a>
+    <a href="/game-theory">Battle Arena</a>
+    <a href="/analytics">Analytics</a>
+    <a href="/add-character">+ Add</a>
+  </div>
 </nav>
 
-<div class="container">
-    <div class="hero-section">
-        <h1>⚔ Character Database Management System</h1>
-        <p>Advanced DBMS with Game Theory, Reviews & Analytics</p>
-    </div>
-
-    <div class="search-section">
-        <div class="search-controls">
-            <input 
-                type="text" 
-                id="search" 
-                class="search-input"
-                placeholder="🔍 Search characters by name..." 
-                onkeyup="load()"
-            >
-            <button id="top20-btn" class="control-btn" onclick="toggleTop20()">Show Top 20</button>
-            <button id="shuffle-btn" class="control-btn" onclick="shuffleCharacters()">Shuffle</button>
-            <select id="sort-select" class="sort-select" onchange="load()">
-                <option value="name">Sort by: Name</option>
-                <option value="magic">Sort by: Magic Power</option>
-                <option value="physical">Sort by: Physical Power</option>
-                <option value="overall">Sort by: Overall Score</option>
-            </select>
-        </div>
-    </div>
-
-    <div id="stats-section" class="stats-section">
-        <div class="stat-card">
-            <div class="stat-number" id="total-chars">0</div>
-            <div class="stat-label">Total Characters</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-number" id="total-battles">0</div>
-            <div class="stat-label">Total Battles</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-number" id="avg-rating">0</div>
-            <div class="stat-label">Average Rating</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-number" id="total-reviews">0</div>
-            <div class="stat-label">Total Reviews</div>
-        </div>
-    </div>
-
-    <div id="container" class="characters-grid"></div>
-
+<div class="hero">
+  <h1>THE LANDS BETWEEN</h1>
+  <p>Character Database &amp; Battle Simulation System</p>
 </div>
 
-<script src="/static/script.js"></script>
+<div id="stats-bar">
+  <div class="stat-item"><div class="num" id="stat-chars">—</div><div class="label">CHARACTERS</div></div>
+  <div class="stat-item"><div class="num" id="stat-reviews">—</div><div class="label">REVIEWS</div></div>
+  <div class="stat-item"><div class="num" id="stat-battles">—</div><div class="label">BATTLES</div></div>
+  <div class="stat-item"><div class="num" id="stat-rating">—</div><div class="label">AVG RATING</div></div>
+</div>
+
+<div class="controls">
+  <div class="search-wrap">
+    <input type="text" id="search" placeholder="Search characters…" oninput="debounceLoad()"/>
+  </div>
+  <select id="sort" onchange="loadCharacters()">
+    <option value="name">Sort: Name</option>
+    <option value="magic">Sort: Magic Power</option>
+    <option value="physical">Sort: Physical Power</option>
+    <option value="overall">Sort: Overall Score</option>
+  </select>
+  <a href="/add-character" class="btn-add">＋ New Character</a>
+</div>
+
+<div id="characters-grid">
+  <div class="state-msg"><span class="icon">⏳</span>Loading characters…</div>
+</div>
+
+<div id="toast"></div>
+
 <script>
-let editId = null;
-let top20 = false;
-let shuffle = false;
+  let debounceTimer;
 
-async function load() {
+  function debounceLoad() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(loadCharacters, 300);
+  }
+
+  function showToast(msg, isError = false) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'show' + (isError ? ' error' : '');
+    setTimeout(() => t.className = '', 2500);
+  }
+
+  function starsHTML(rating) {
+    const n = Math.round(rating || 0);
+    return '★'.repeat(n) + '☆'.repeat(5 - n);
+  }
+
+  function getImageHTML(char) {
+    if (char.image && (char.image.startsWith('http') || char.image.startsWith('/'))) {
+      return `<img class="card-img" src="${char.image}" alt="${char.name}"
+                   onerror="this.outerHTML='<div class=\\'card-img-placeholder\\'>⚔</div>'">`; 
+    }
+    return `<div class="card-img-placeholder">⚔</div>`;
+  }
+
+  function renderCard(char) {
+    const score = ((char.overall_score || 0)).toFixed(1);
+    return `
+      <div class="char-card" style="animation-delay:${Math.random()*0.2}s">
+        ${getImageHTML(char)}
+        <div class="card-body">
+          <div class="card-name">${char.name}</div>
+          <div class="card-title">${char.title}</div>
+          <div class="card-stats">
+            <div class="stat-pill">Magic <span>${char.magic_power}</span></div>
+            <div class="stat-pill">Physical <span>${char.physical_power}</span></div>
+            <div class="stat-pill">Defense <span>${char.defense}</span></div>
+            <div class="stat-pill">Speed <span>${char.speed}</span></div>
+          </div>
+          <div class="card-rating">
+            <span class="stars">${starsHTML(char.avg_rating)}</span>
+            <span>${(char.avg_rating || 0).toFixed(1)} (${char.review_count || 0})</span>
+            <span style="margin-left:auto; color:var(--gold-light); font-size:0.75rem">Score: ${score}</span>
+          </div>
+          <div class="card-actions">
+            <a href="/character/${char.id}" class="btn-view">VIEW</a>
+            <a href="/add-character?id=${char.id}" class="btn-edit">EDIT</a>
+            <button class="btn-del" onclick="deleteChar(event, ${char.id}, '${char.name.replace(/'/g,"\\'")}')">DEL</button>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  async function loadCharacters() {
+    const q = document.getElementById('search').value.trim();
+    const sort = document.getElementById('sort').value;
+    const grid = document.getElementById('characters-grid');
+    grid.innerHTML = '<div class="state-msg"><span class="icon">⏳</span>Loading…</div>';
+
     try {
-        let q = document.getElementById("search").value;
-        let sort = document.getElementById("sort-select").value;
-        
-        let res = await fetch("/api/characters?q=" + q + "&sort=" + sort);
-        let data = await res.json();
+      const params = new URLSearchParams();
+      if (q) params.set('q', q);
+      if (sort) params.set('sort', sort);
 
-        let html = "";
+      const res = await fetch('/api/characters?' + params.toString());
+      if (!res.ok) throw new Error('Server error ' + res.status);
+      const chars = await res.json();
 
-        // optionally shuffle and/or limit to top 20 for a concise home view
-        if (shuffle) {
-            for (let i = data.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [data[i], data[j]] = [data[j], data[i]];
-            }
-        }
-        if (top20) data = data.slice(0, 20);
+      if (!Array.isArray(chars) || chars.length === 0) {
+        grid.innerHTML = '<div class="state-msg"><span class="icon">🗡</span>No characters found.<br><a href="/add-character" style="color:var(--gold)">Add the first one →</a></div>';
+        return;
+      }
 
-        data.forEach(c => {
-            html += `
-            <div class="card">
-                <div class="card-image-container">
-                    <img src="${c.image}" alt="${c.name}" class="card-image">
-                    <div class="card-overlay">
-                        <a href="/character/${c.id}" class="btn-view-details">View Details</a>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <h2 class="card-title">${c.name}</h2>
-                    <p class="card-subtitle">${c.title}</p>
-                    <p class="card-desc">${c.description ? (c.description.length>120 ? c.description.substring(0,120)+"..." : c.description) : ''}</p>
-                    
-                    <div class="card-stats">
-                        <div class="stat-item">
-                            <span class="stat-icon">⚡</span>
-                            <span class="stat-text">Magic: ${c.magic_power}</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-icon">💪</span>
-                            <span class="stat-text">Physical: ${c.physical_power}</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-icon">🛡️</span>
-                            <span class="stat-text">Defense: ${c.defense}</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-icon">⚡</span>
-                            <span class="stat-text">Speed: ${c.speed}</span>
-                        </div>
-                    </div>
-
-                    <div class="card-rating">
-                        <span class="rating-stars">⭐ ${c.avg_rating}/5</span>
-                        <span class="rating-count">(${c.review_count} reviews)</span>
-                    </div>
-
-                    <div class="card-weapon">
-                        <span class="weapon-icon">🗡️</span>
-                        <span class="weapon-name">${c.weapon}</span>
-                    </div>
-
-                    <div class="card-actions">
-                        <a href="/character/${c.id}" class="btn btn-primary">Details</a>
-                        <button class="btn btn-secondary" onclick="editCharacter(${c.id})">Edit</button>
-                        <button class="btn btn-danger" onclick="deleteCharacter(${c.id})">Delete</button>
-                    </div>
-                </div>
-            </div>
-            `;
-        });
-
-        document.getElementById("container").innerHTML = html;
-
-        // Load statistics
-        await loadStats();
-
-    } catch (error) {
-        console.error("Error loading characters:", error);
-        document.getElementById("container").innerHTML = '<p class="error">Error loading characters</p>';
+      grid.innerHTML = chars.map(renderCard).join('');
+    } catch (err) {
+      console.error(err);
+      grid.innerHTML = `<div class="state-msg"><span class="icon">⚠</span>Failed to load characters.<br><small style="color:var(--red)">${err.message}</small></div>`;
     }
-}
+  }
 
-function toggleTop20(){
-    top20 = !top20;
-    document.getElementById('top20-btn').textContent = top20 ? 'Showing Top 20' : 'Show Top 20';
-    load();
-}
-
-function shuffleCharacters(){
-    shuffle = !shuffle;
-    document.getElementById('shuffle-btn').textContent = shuffle ? 'Shuffle: ON' : 'Shuffle';
-    load();
-}
-
-async function loadStats() {
+  async function loadStats() {
     try {
-        let res = await fetch("/api/analytics/database-stats");
-        let stats = await res.json();
-        
-        document.getElementById("total-chars").textContent = stats.total_characters;
-        document.getElementById("total-battles").textContent = stats.total_battles;
-        document.getElementById("avg-rating").textContent = stats.avg_character_rating;
-        document.getElementById("total-reviews").textContent = stats.total_reviews;
-    } catch (error) {
-        console.error("Error loading stats:", error);
+      const res = await fetch('/api/analytics/database-stats');
+      if (!res.ok) return;
+      const d = await res.json();
+      document.getElementById('stat-chars').textContent   = d.total_characters ?? '—';
+      document.getElementById('stat-reviews').textContent = d.total_reviews ?? '—';
+      document.getElementById('stat-battles').textContent = d.total_battles ?? '—';
+      document.getElementById('stat-rating').textContent  = d.avg_character_rating != null ? d.avg_character_rating.toFixed(1) : '—';
+    } catch (e) { /* non-critical */ }
+  }
+
+  async function deleteChar(event, id, name) {
+    event.stopPropagation();
+    if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+    try {
+      const res = await fetch('/api/characters/' + id, { method: 'DELETE' });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Delete failed');
+      }
+      showToast(`${name} deleted`);
+      loadCharacters();
+      loadStats();
+    } catch (err) {
+      showToast(err.message, true);
     }
-}
+  }
 
-async function editCharacter(id) {
-    // Redirect to character detail page for editing
-    window.location.href = `/character/${id}`;
-}
-
-async function deleteCharacter(id) {
-    if (confirm("Are you sure you want to delete this character?")) {
-        try {
-            let res = await fetch("/api/characters/" + id, {method: "DELETE"});
-            if (res.ok) {
-                alert("Character deleted successfully!");
-                load();
-            } else {
-                alert("Error deleting character");
-            }
-        } catch (error) {
-            console.error("Error:", error);
-            alert("Error deleting character");
-        }
-    }
-}
-
-// Initial load
-load();
+  // Initial load
+  loadCharacters();
+  loadStats();
 </script>
-
 </body>
 </html>

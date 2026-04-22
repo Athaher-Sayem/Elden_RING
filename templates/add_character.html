@@ -1,216 +1,391 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Add/Edit Character - Elden Ring DBMS</title>
-    <link rel="stylesheet" href="/static/style.css">
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title id="page-title">Add Character — Elden Ring DBMS</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --gold: #c9a84c;
+      --gold-light: #f0d080;
+      --bg: #0a0806;
+      --bg2: #110e09;
+      --bg3: #1a1510;
+      --text: #e8dcc8;
+      --text-dim: #8a7a60;
+      --red: #8b2020;
+      --green: #4a7a4a;
+      --border: #2a2218;
+    }
+    body { background: var(--bg); color: var(--text); font-family: 'Crimson Text', serif; min-height: 100vh; }
+
+    nav {
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .nav-brand { font-family:'Cinzel',serif; font-size:1.2rem; color:var(--gold); text-decoration:none; letter-spacing:2px; }
+    .nav-links { display:flex; gap:1.5rem; }
+    .nav-links a { color:var(--text-dim); text-decoration:none; font-family:'Cinzel',serif; font-size:0.78rem; letter-spacing:1px; transition:color 0.2s; }
+    .nav-links a:hover { color:var(--gold); }
+
+    .page-header {
+      text-align: center;
+      padding: 3rem 2rem 2rem;
+      background: radial-gradient(ellipse at top, #1c1508 0%, var(--bg) 70%);
+    }
+    .page-header h1 { font-family:'Cinzel',serif; font-size:2rem; color:var(--gold); letter-spacing:4px; }
+    .page-header p { color:var(--text-dim); font-style:italic; margin-top:0.4rem; }
+
+    .form-wrap {
+      max-width: 820px;
+      margin: 2rem auto 4rem;
+      padding: 0 1.5rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+    }
+    @media(max-width:640px){ .form-wrap{ grid-template-columns:1fr; } }
+
+    .form-section {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1.5rem;
+    }
+    .form-section h2 {
+      font-family:'Cinzel',serif;
+      font-size:0.85rem;
+      color:var(--gold);
+      letter-spacing:2px;
+      margin-bottom:1.2rem;
+      padding-bottom:0.6rem;
+      border-bottom:1px solid var(--border);
+    }
+
+    .field { margin-bottom: 1rem; }
+    label { display:block; font-size:0.78rem; color:var(--text-dim); letter-spacing:1px; margin-bottom:0.3rem; font-family:'Cinzel',serif; }
+    input[type=text], input[type=number], input[type=url], textarea {
+      width: 100%;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.6rem 0.9rem;
+      font-family: 'Crimson Text', serif;
+      font-size: 1rem;
+      border-radius: 4px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input:focus, textarea:focus { border-color: var(--gold); }
+    textarea { resize: vertical; min-height: 80px; }
+    input[type=range] { width:100%; accent-color: var(--gold); }
+
+    .stat-row { display:flex; align-items:center; gap:0.75rem; margin-bottom:0.8rem; }
+    .stat-row label { flex:0 0 120px; margin:0; font-size:0.73rem; }
+    .stat-row input[type=range] { flex:1; }
+    .stat-val { flex:0 0 36px; text-align:right; font-family:'Cinzel',serif; color:var(--gold); font-size:0.9rem; }
+
+    /* Preview */
+    .preview-card {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 1rem;
+    }
+    .preview-img {
+      width:100%; height:160px; object-fit:cover; display:block; background:var(--bg);
+    }
+    .preview-img-placeholder {
+      width:100%; height:160px;
+      display:flex; align-items:center; justify-content:center;
+      font-size:3rem; color:var(--text-dim); background:var(--bg);
+    }
+    .preview-body { padding:0.8rem; }
+    .preview-name { font-family:'Cinzel',serif; color:var(--gold); font-size:0.95rem; }
+    .preview-title { font-size:0.8rem; color:var(--text-dim); font-style:italic; margin-top:0.1rem; }
+    .preview-score {
+      margin-top:0.6rem;
+      font-family:'Cinzel',serif;
+      font-size:0.8rem;
+      color:var(--text-dim);
+    }
+    .preview-score span { color:var(--gold-light); font-size:1.1rem; }
+
+    /* Actions */
+    .form-actions { grid-column: 1/-1; display:flex; gap:1rem; justify-content:flex-end; }
+    .btn-submit {
+      background:var(--gold); color:#000;
+      border:none; padding:0.75rem 2rem;
+      font-family:'Cinzel',serif; font-size:0.85rem; letter-spacing:1px;
+      border-radius:4px; cursor:pointer; transition:background 0.2s;
+    }
+    .btn-submit:hover { background:var(--gold-light); }
+    .btn-submit:disabled { opacity:0.5; cursor:not-allowed; }
+    .btn-cancel {
+      background:transparent; color:var(--text-dim);
+      border:1px solid var(--border); padding:0.75rem 1.5rem;
+      font-family:'Cinzel',serif; font-size:0.85rem; letter-spacing:1px;
+      border-radius:4px; cursor:pointer; text-decoration:none;
+      display:inline-flex; align-items:center; transition:border-color 0.2s, color 0.2s;
+    }
+    .btn-cancel:hover { border-color:var(--text-dim); color:var(--text); }
+
+    /* Error banner */
+    #error-banner {
+      background:var(--red); color:#fff;
+      padding:0.75rem 1rem; border-radius:4px;
+      font-size:0.9rem; margin-bottom:1rem;
+      display:none;
+    }
+    #success-banner {
+      background:var(--green); color:#fff;
+      padding:0.75rem 1rem; border-radius:4px;
+      font-size:0.9rem; margin-bottom:1rem;
+      display:none;
+      font-family:'Cinzel',serif; letter-spacing:1px;
+    }
+
+    .required { color: var(--red); }
+  </style>
 </head>
 <body>
 
-<nav class="navbar">
-    <div class="nav-container">
-        <h1 class="nav-title">⚔ ELDEN RING DBMS</h1>
-        <ul class="nav-menu">
-            <li><a href="/" class="nav-link">Home</a></li>
-            <li><a href="/add-character" class="nav-link active">Add Character</a></li>
-            <li><a href="/reviews" class="nav-link">Reviews</a></li>
-            <li><a href="/game-theory" class="nav-link">Battle Arena</a></li>
-            <li><a href="/analytics" class="nav-link">Analytics</a></li>
-        </ul>
-    </div>
+<nav>
+  <a class="nav-brand" href="/">⚔ ELDEN RING DBMS</a>
+  <div class="nav-links">
+    <a href="/">Home</a>
+    <a href="/reviews">Reviews</a>
+    <a href="/game-theory">Battle Arena</a>
+    <a href="/analytics">Analytics</a>
+  </div>
 </nav>
 
-<div class="container">
-    <div class="form-section">
-        <h1 id="form-title">Add New Character</h1>
-        
-        <form id="character-form" class="character-form">
-            <div class="form-group">
-                <label>Character Name *</label>
-                <input type="text" id="name" placeholder="e.g., Malenia" required>
-            </div>
+<div class="page-header">
+  <h1 id="h1-title">ADD CHARACTER</h1>
+  <p id="h1-sub">Forge a new legend into the Lands Between</p>
+</div>
 
-            <div class="form-group">
-                <label>Title *</label>
-                <input type="text" id="title" placeholder="e.g., Blade of Miquella" required>
-            </div>
+<div class="form-wrap">
+  <div id="error-banner"></div>
+  <div id="success-banner"></div>
 
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Magic Power (0-100)</label>
-                    <input type="number" id="magic_power" min="0" max="100" value="50">
-                    <div class="stat-preview" id="magic-preview"></div>
-                </div>
-
-                <div class="form-group">
-                    <label>Physical Power (0-100)</label>
-                    <input type="number" id="physical_power" min="0" max="100" value="50">
-                    <div class="stat-preview" id="physical-preview"></div>
-                </div>
-            </div>
-
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Defense (0-100)</label>
-                    <input type="number" id="defense" min="0" max="100" value="50">
-                    <div class="stat-preview" id="defense-preview"></div>
-                </div>
-
-                <div class="form-group">
-                    <label>Speed (0-100)</label>
-                    <input type="number" id="speed" min="0" max="100" value="50">
-                    <div class="stat-preview" id="speed-preview"></div>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label>Weapon</label>
-                <input type="text" id="weapon" placeholder="e.g., Waterfowl Dance">
-            </div>
-
-            <div class="form-group">
-                <label>Image URL</label>
-                <input type="url" id="image" placeholder="https://example.com/image.jpg">
-                <div id="image-preview" class="image-preview"></div>
-            </div>
-
-            <div class="form-group">
-                <label>Description</label>
-                <textarea id="description" rows="4" placeholder="Character description..."></textarea>
-            </div>
-
-            <div class="form-group">
-                <label>Overall Score</label>
-                <div class="overall-score-display" id="overall-score">0/100</div>
-            </div>
-
-            <div class="form-actions">
-                <button type="submit" class="btn btn-primary">Save Character</button>
-                <a href="/" class="btn btn-secondary">Cancel</a>
-            </div>
-
-            <div id="message" class="message"></div>
-        </form>
+  <!-- LEFT: Identity -->
+  <div class="form-section">
+    <h2>IDENTITY</h2>
+    <div class="field">
+      <label>NAME <span class="required">*</span></label>
+      <input type="text" id="f-name" placeholder="e.g. Ranni" maxlength="100"/>
     </div>
+    <div class="field">
+      <label>TITLE <span class="required">*</span></label>
+      <input type="text" id="f-title" placeholder="e.g. Witch of Moon" maxlength="100"/>
+    </div>
+    <div class="field">
+      <label>WEAPON</label>
+      <input type="text" id="f-weapon" placeholder="e.g. Dark Moon" maxlength="100"/>
+    </div>
+    <div class="field">
+      <label>IMAGE URL</label>
+      <input type="url" id="f-image" placeholder="https://…" oninput="updatePreview()"/>
+    </div>
+    <div class="field">
+      <label>DESCRIPTION</label>
+      <textarea id="f-description" placeholder="Background lore…"></textarea>
+    </div>
+  </div>
+
+  <!-- RIGHT: Stats + Preview -->
+  <div>
+    <div class="form-section" style="margin-bottom:1.5rem">
+      <h2>COMBAT STATS</h2>
+      <div class="stat-row">
+        <label>MAGIC POWER</label>
+        <input type="range" id="f-magic" min="0" max="100" value="50" oninput="syncSlider('magic')"/>
+        <div class="stat-val" id="v-magic">50</div>
+      </div>
+      <div class="stat-row">
+        <label>PHYSICAL PWR</label>
+        <input type="range" id="f-physical" min="0" max="100" value="50" oninput="syncSlider('physical')"/>
+        <div class="stat-val" id="v-physical">50</div>
+      </div>
+      <div class="stat-row">
+        <label>DEFENSE</label>
+        <input type="range" id="f-defense" min="0" max="100" value="50" oninput="syncSlider('defense')"/>
+        <div class="stat-val" id="v-defense">50</div>
+      </div>
+      <div class="stat-row">
+        <label>SPEED</label>
+        <input type="range" id="f-speed" min="0" max="100" value="50" oninput="syncSlider('speed')"/>
+        <div class="stat-val" id="v-speed">50</div>
+      </div>
+    </div>
+
+    <!-- Preview -->
+    <div class="form-section">
+      <h2>PREVIEW</h2>
+      <div class="preview-card">
+        <div id="preview-img-wrap">
+          <div class="preview-img-placeholder">⚔</div>
+        </div>
+        <div class="preview-body">
+          <div class="preview-name" id="p-name">Character Name</div>
+          <div class="preview-title" id="p-title">Title</div>
+          <div class="preview-score">Overall Score: <span id="p-score">50.0</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="form-actions">
+    <a href="/" class="btn-cancel">CANCEL</a>
+    <button class="btn-submit" id="btn-submit" onclick="submitForm()">CREATE CHARACTER</button>
+  </div>
 </div>
 
 <script>
-    let editCharId = null;
+  // Detect edit mode from URL ?id=
+  const params = new URLSearchParams(location.search);
+  const editId = params.get('id') ? parseInt(params.get('id')) : null;
 
-    // Get edit ID from URL params
-    function getEditId() {
-        let params = new URLSearchParams(window.location.search);
-        return params.get('edit');
+  if (editId) {
+    document.getElementById('page-title').textContent = 'Edit Character — Elden Ring DBMS';
+    document.getElementById('h1-title').textContent = 'EDIT CHARACTER';
+    document.getElementById('h1-sub').textContent = 'Reshape the legend';
+    document.getElementById('btn-submit').textContent = 'SAVE CHANGES';
+    loadCharacterData(editId);
+  }
+
+  async function loadCharacterData(id) {
+    try {
+      const res = await fetch('/api/characters/' + id);
+      if (!res.ok) throw new Error('Character not found');
+      const c = await res.json();
+      document.getElementById('f-name').value = c.name || '';
+      document.getElementById('f-title').value = c.title || '';
+      document.getElementById('f-weapon').value = c.weapon || '';
+      document.getElementById('f-image').value = c.image || '';
+      document.getElementById('f-description').value = c.description || '';
+      document.getElementById('f-magic').value = c.magic_power ?? 50;
+      document.getElementById('f-physical').value = c.physical_power ?? 50;
+      document.getElementById('f-defense').value = c.defense ?? 50;
+      document.getElementById('f-speed').value = c.speed ?? 50;
+      ['magic','physical','defense','speed'].forEach(syncSlider);
+      updatePreview();
+    } catch(e) {
+      showError('Could not load character: ' + e.message);
     }
+  }
 
-    async function loadCharacterForEdit() {
-        editCharId = getEditId();
-        if (!editCharId) return;
+  function syncSlider(key) {
+    const map = { magic:'f-magic', physical:'f-physical', defense:'f-defense', speed:'f-speed' };
+    const val = document.getElementById(map[key]).value;
+    document.getElementById('v-' + key).textContent = val;
+    updateScore();
+  }
 
-        try {
-            let res = await fetch(`/api/characters/${editCharId}`);
-            if (!res.ok) throw new Error('Character not found');
-            
-            let char = await res.json();
-            
-            document.getElementById("form-title").textContent = `Edit ${char.name}`;
-            document.getElementById("name").value = char.name;
-            document.getElementById("title").value = char.title;
-            document.getElementById("magic_power").value = char.magic_power;
-            document.getElementById("physical_power").value = char.physical_power;
-            document.getElementById("defense").value = char.defense;
-            document.getElementById("speed").value = char.speed;
-            document.getElementById("weapon").value = char.weapon;
-            document.getElementById("image").value = char.image;
-            document.getElementById("description").value = char.description || '';
-            
-            updatePreviews();
-        } catch (error) {
-            console.error("Error loading character:", error);
-            alert("Error loading character for editing");
-        }
+  function updateScore() {
+    const m = +document.getElementById('f-magic').value;
+    const p = +document.getElementById('f-physical').value;
+    const d = +document.getElementById('f-defense').value;
+    const s = +document.getElementById('f-speed').value;
+    document.getElementById('p-score').textContent = ((m+p+d+s)/4).toFixed(1);
+  }
+
+  function updatePreview() {
+    const name = document.getElementById('f-name').value.trim() || 'Character Name';
+    const title = document.getElementById('f-title').value.trim() || 'Title';
+    const img = document.getElementById('f-image').value.trim();
+    document.getElementById('p-name').textContent = name;
+    document.getElementById('p-title').textContent = title;
+    const wrap = document.getElementById('preview-img-wrap');
+    if (img) {
+      wrap.innerHTML = `<img class="preview-img" src="${img}" alt="preview" onerror="this.outerHTML='<div class=\\'preview-img-placeholder\\'>⚔</div>'">`;
+    } else {
+      wrap.innerHTML = '<div class="preview-img-placeholder">⚔</div>';
     }
+    updateScore();
+  }
 
-    function updatePreviews() {
-        // Update stat previews
-        let magic = parseInt(document.getElementById("magic_power").value) || 0;
-        let physical = parseInt(document.getElementById("physical_power").value) || 0;
-        let defense = parseInt(document.getElementById("defense").value) || 0;
-        let speed = parseInt(document.getElementById("speed").value) || 0;
+  document.getElementById('f-name').addEventListener('input', updatePreview);
+  document.getElementById('f-title').addEventListener('input', updatePreview);
 
-        document.getElementById("magic-preview").style.width = magic + "%";
-        document.getElementById("physical-preview").style.width = physical + "%";
-        document.getElementById("defense-preview").style.width = defense + "%";
-        document.getElementById("speed-preview").style.width = speed + "%";
+  function showError(msg) {
+    const b = document.getElementById('error-banner');
+    b.textContent = '⚠ ' + msg;
+    b.style.display = 'block';
+    document.getElementById('success-banner').style.display = 'none';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 
-        // Update overall score
-        let overall = ((magic + physical + defense + speed) / 4).toFixed(1);
-        document.getElementById("overall-score").textContent = overall + "/100";
+  function showSuccess(msg) {
+    const b = document.getElementById('success-banner');
+    b.textContent = '✓ ' + msg;
+    b.style.display = 'block';
+    document.getElementById('error-banner').style.display = 'none';
+  }
 
-        // Update image preview
-        let imageUrl = document.getElementById("image").value;
-        if (imageUrl) {
-            document.getElementById("image-preview").innerHTML = `<img src="${imageUrl}" alt="preview" style="max-width: 200px; max-height: 200px;">`;
-        }
+  async function submitForm() {
+    const name = document.getElementById('f-name').value.trim();
+    const title = document.getElementById('f-title').value.trim();
+
+    if (!name) { showError('Name is required.'); return; }
+    if (!title) { showError('Title is required.'); return; }
+
+    const payload = {
+      name,
+      title,
+      weapon: document.getElementById('f-weapon').value.trim(),
+      image: document.getElementById('f-image').value.trim(),
+      description: document.getElementById('f-description').value.trim(),
+      magic_power: +document.getElementById('f-magic').value,
+      physical_power: +document.getElementById('f-physical').value,
+      defense: +document.getElementById('f-defense').value,
+      speed: +document.getElementById('f-speed').value
+    };
+
+    const btn = document.getElementById('btn-submit');
+    btn.disabled = true;
+    btn.textContent = editId ? 'Saving…' : 'Creating…';
+
+    try {
+      const url = editId ? '/api/characters/' + editId : '/api/characters';
+      const method = 'POST';
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Request failed');
+      }
+
+      showSuccess(editId ? 'Character updated successfully!' : 'Character created successfully!');
+      btn.textContent = editId ? 'SAVED ✓' : 'CREATED ✓';
+
+      // Redirect to home after short delay so user sees success
+      setTimeout(() => { window.location.href = '/'; }, 1200);
+
+    } catch (err) {
+      showError(err.message);
+      btn.disabled = false;
+      btn.textContent = editId ? 'SAVE CHANGES' : 'CREATE CHARACTER';
     }
-
-    document.getElementById("character-form").addEventListener("submit", async (e) => {
-        e.preventDefault();
-
-        try {
-            let data = {
-                name: document.getElementById("name").value,
-                title: document.getElementById("title").value,
-                magic_power: parseInt(document.getElementById("magic_power").value),
-                physical_power: parseInt(document.getElementById("physical_power").value),
-                defense: parseInt(document.getElementById("defense").value),
-                speed: parseInt(document.getElementById("speed").value),
-                weapon: document.getElementById("weapon").value,
-                image: document.getElementById("image").value,
-                description: document.getElementById("description").value
-            };
-
-            let url = editCharId ? `/api/characters/${editCharId}` : `/api/characters`;
-            let method = editCharId ? "POST" : "POST";
-
-            let res = await fetch(url, {
-                method: method,
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(data)
-            });
-
-            let result = await res.json();
-
-            if (!res.ok) {
-                throw new Error(result.error || "Error saving character");
-            }
-
-            showMessage("Character saved successfully!", "success");
-            setTimeout(() => window.location.href = "/", 1500);
-
-        } catch (error) {
-            console.error("Error:", error);
-            showMessage(error.message, "error");
-        }
-    });
-
-    function showMessage(text, type) {
-        let msg = document.getElementById("message");
-        msg.textContent = text;
-        msg.className = "message " + type;
-        msg.style.display = "block";
-    }
-
-    // Add event listeners for live previews
-    document.getElementById("magic_power").addEventListener("input", updatePreviews);
-    document.getElementById("physical_power").addEventListener("input", updatePreviews);
-    document.getElementById("defense").addEventListener("input", updatePreviews);
-    document.getElementById("speed").addEventListener("input", updatePreviews);
-    document.getElementById("image").addEventListener("change", updatePreviews);
-
-    // Load for editing if needed
-    loadCharacterForEdit();
-    updatePreviews();
+  }
 </script>
-
 </body>
 </html>

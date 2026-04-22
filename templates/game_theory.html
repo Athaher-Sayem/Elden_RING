@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Battle Arena - Game Theory Simulation</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="nav-container">
+        <h1 class="nav-title">⚔ ELDEN RING DBMS</h1>
+        <ul class="nav-menu">
+            <li><a href="/" class="nav-link">Home</a></li>
+            <li><a href="/add-character" class="nav-link">Add Character</a></li>
+            <li><a href="/reviews" class="nav-link">Reviews</a></li>
+            <li><a href="/game-theory" class="nav-link active">Battle Arena</a></li>
+            <li><a href="/analytics" class="nav-link">Analytics</a></li>
+        </ul>
+    </div>
+</nav>
+
+<div class="container">
+    <div class="hero-section">
+        <h1>⚔ Battle Arena - Game Theory Simulation</h1>
+        <p>Simulate battles using Game Theory analysis</p>
+    </div>
+
+    <div class="battle-simulator">
+        <div class="battle-setup">
+            <h2>Configure Battle</h2>
+            
+            <div class="battle-matchup">
+                <div class="fighter-setup">
+                    <h3>Fighter 1</h3>
+                    <select id="char1-select" onchange="updateFighter1Info()">
+                        <option value="">Select Character...</option>
+                    </select>
+                    <div id="char1-info" class="fighter-info"></div>
+                    
+                    <label>Strategy</label>
+                    <select id="strategy1">
+                        <option value="balanced">Balanced</option>
+                        <option value="aggressive">Aggressive</option>
+                        <option value="defensive">Defensive</option>
+                    </select>
+                </div>
+
+                <div class="vs-separator">
+                    <div class="vs-text">VS</div>
+                </div>
+
+                <div class="fighter-setup">
+                    <h3>Fighter 2</h3>
+                    <select id="char2-select" onchange="updateFighter2Info()">
+                        <option value="">Select Character...</option>
+                    </select>
+                    <div id="char2-info" class="fighter-info"></div>
+                    
+                    <label>Strategy</label>
+                    <select id="strategy2">
+                        <option value="balanced">Balanced</option>
+                        <option value="aggressive">Aggressive</option>
+                        <option value="defensive">Defensive</option>
+                    </select>
+                </div>
+            </div>
+
+            <button class="btn btn-primary btn-large" onclick="simulateBattle()">⚡ Simulate Battle</button>
+        </div>
+
+        <div id="battle-result" class="battle-result"></div>
+
+        <div class="battle-history">
+            <h2>Battle History</h2>
+            <div id="history-container" class="history-container"></div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    async function loadCharacters() {
+        try {
+            let res = await fetch("/api/characters");
+            let chars = await res.json();
+            
+            [
+                { selectId: "char1-select", default: null },
+                { selectId: "char2-select", default: null }
+            ].forEach(({ selectId, default: defaultVal }) => {
+                let select = document.getElementById(selectId);
+                chars.forEach(char => {
+                    let option = document.createElement("option");
+                    option.value = char.id;
+                    option.textContent = char.name + " (" + char.title + ")";
+                    select.appendChild(option);
+                });
+            });
+
+            // Check URL params
+            let params = new URLSearchParams(window.location.search);
+            if (params.has('char1')) {
+                document.getElementById("char1-select").value = params.get('char1');
+                updateFighter1Info();
+            }
+        } catch (error) {
+            console.error("Error loading characters:", error);
+        }
+    }
+
+    async function updateFighter1Info() {
+        let charId = document.getElementById("char1-select").value;
+        if (!charId) {
+            document.getElementById("char1-info").innerHTML = '';
+            return;
+        }
+
+        try {
+            let res = await fetch(`/api/characters/${charId}`);
+            let char = await res.json();
+            displayFighterInfo("char1-info", char);
+        } catch (error) {
+            console.error("Error:", error);
+        }
+    }
+
+    async function updateFighter2Info() {
+        let charId = document.getElementById("char2-select").value;
+        if (!charId) {
+            document.getElementById("char2-info").innerHTML = '';
+            return;
+        }
+
+        try {
+            let res = await fetch(`/api/characters/${charId}`);
+            let char = await res.json();
+            displayFighterInfo("char2-info", char);
+        } catch (error) {
+            console.error("Error:", error);
+        }
+    }
+
+    function displayFighterInfo(elementId, char) {
+        let html = `
+        <div class="stat-row">
+            <span>⚡ Magic:</span> <strong>${char.magic_power}</strong>
+        </div>
+        <div class="stat-row">
+            <span>💪 Physical:</span> <strong>${char.physical_power}</strong>
+        </div>
+        <div class="stat-row">
+            <span>🛡️ Defense:</span> <strong>${char.defense}</strong>
+        </div>
+        <div class="stat-row">
+            <span>⚡ Speed:</span> <strong>${char.speed}</strong>
+        </div>
+        <div class="stat-row">
+            <span>Score:</span> <strong>${char.overall_score.toFixed(1)}</strong>
+        </div>
+        `;
+        document.getElementById(elementId).innerHTML = html;
+    }
+
+    async function simulateBattle() {
+        let char1Id = document.getElementById("char1-select").value;
+        let char2Id = document.getElementById("char2-select").value;
+
+        if (!char1Id || !char2Id) {
+            alert("Please select both fighters");
+            return;
+        }
+
+        if (char1Id === char2Id) {
+            alert("Please select different characters");
+            return;
+        }
+
+        try {
+            let data = {
+                character1_id: parseInt(char1Id),
+                character2_id: parseInt(char2Id),
+                char1_strategy: document.getElementById("strategy1").value,
+                char2_strategy: document.getElementById("strategy2").value,
+                rounds: 1
+            };
+
+            let res = await fetch("/api/simulate-battle", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+
+            if (!res.ok) throw new Error("Battle simulation failed");
+
+            let result = await res.json();
+            displayBattleResult(result);
+            loadBattleHistory();
+
+        } catch (error) {
+            console.error("Error:", error);
+            alert("Error simulating battle: " + error.message);
+        }
+    }
+
+    function displayBattleResult(battle) {
+        let resultDiv = document.getElementById("battle-result");
+        
+        let html = `
+        <div class="result-container">
+            <h2>⚔ Battle Results</h2>
+            
+            <div class="result-matchup">
+                <div class="result-fighter">
+                    <h3>${battle.char1.name}</h3>
+                    <p class="strategy-tag">${capitalizeFirst(battle.char1.strategy)} Strategy</p>
+                    <p class="power">Power: ${battle.char1.total_power}</p>
+                    <div class="probability">
+                        <span>Win Probability:</span>
+                        <strong>${battle.char1.win_probability}%</strong>
+                    </div>
+                    <div class="probability-bar">
+                        <div class="probability-fill" style="width: ${battle.char1.win_probability}%"></div>
+                    </div>
+                </div>
+
+                <div class="result-separator">
+                    <div class="winner-badge">
+                        ${battle.winner.id === battle.battle.character1_id ? 
+                        '<span class="badge-winner">🏆 WINNER</span>' : 
+                        ''}
+                    </div>
+                </div>
+
+                <div class="result-fighter">
+                    <h3>${battle.char2.name}</h3>
+                    <p class="strategy-tag">${capitalizeFirst(battle.char2.strategy)} Strategy</p>
+                    <p class="power">Power: ${battle.char2.total_power}</p>
+                    <div class="probability">
+                        <span>Win Probability:</span>
+                        <strong>${battle.char2.win_probability}%</strong>
+                    </div>
+                    <div class="probability-bar">
+                        <div class="probability-fill" style="width: ${battle.char2.win_probability}%"></div>
+                    </div>
+                    <div class="winner-badge">
+                        ${battle.winner.id === battle.battle.character2_id ? 
+                        '<span class="badge-winner">🏆 WINNER</span>' : 
+                        ''}
+                    </div>
+                </div>
+            </div>
+
+            <div class="result-analysis">
+                <h3>Game Theory Analysis</h3>
+                <p>
+                    This battle uses a <strong>payoff matrix</strong> model where character stats and strategies 
+                    determine optimal play. The winner is determined based on:
+                </p>
+                <ul>
+                    <li>Combined power scores (magic + physical + speed)</li>
+                    <li>Strategy effectiveness against opponent strategy</li>
+                    <li>Probability calculation using normalization</li>
+                </ul>
+            </div>
+        </div>
+        `;
+
+        resultDiv.innerHTML = html;
+        resultDiv.style.display = "block";
+    }
+
+    async function loadBattleHistory() {
+        try {
+            let res = await fetch("/api/battles?page=1&per_page=10");
+            let data = await res.json();
+
+            let container = document.getElementById("history-container");
+            let html = '';
+
+            data.battles.forEach(battle => {
+                html += `
+                <div class="history-item">
+                    <div class="history-matchup">
+                        <span class="fighter-name">${battle.char1_name}</span>
+                        <span class="vs">vs</span>
+                        <span class="fighter-name">${battle.char2_name}</span>
+                    </div>
+                    <div class="history-result">
+                        <strong>Winner:</strong> ${battle.winner_name || 'N/A'}
+                    </div>
+                    <div class="history-probability">
+                        ${battle.char1_name}: ${battle.char1_win_probability}% | 
+                        ${battle.char2_name}: ${battle.char2_win_probability}%
+                    </div>
+                    <small>${new Date(battle.created_at).toLocaleDateString()}</small>
+                </div>
+                `;
+            });
+
+            if (html === '') {
+                html = '<p class="no-data">No battles yet. Simulate one to get started!</p>';
+            }
+
+            container.innerHTML = html;
+        } catch (error) {
+            console.error("Error loading history:", error);
+        }
+    }
+
+    function capitalizeFirst(str) {
+        return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
+    // Initialize
+    loadCharacters();
+    loadBattleHistory();
+</script>
+
+</body>
+</html>

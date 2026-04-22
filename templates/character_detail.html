@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Character Details - Elden Ring DBMS</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="nav-container">
+        <h1 class="nav-title">⚔ ELDEN RING DBMS</h1>
+        <ul class="nav-menu">
+            <li><a href="/" class="nav-link">Home</a></li>
+            <li><a href="/add-character" class="nav-link">Add Character</a></li>
+            <li><a href="/reviews" class="nav-link">Reviews</a></li>
+            <li><a href="/game-theory" class="nav-link">Battle Arena</a></li>
+            <li><a href="/analytics" class="nav-link">Analytics</a></li>
+        </ul>
+    </div>
+</nav>
+
+<div class="container">
+    <div id="character-detail" class="character-detail-section"></div>
+</div>
+
+<script>
+    function getCharId() {
+        return new URL(window.location).pathname.split('/').pop();
+    }
+
+    async function loadCharacter() {
+        try {
+            let charId = getCharId();
+            let res = await fetch(`/api/characters/${charId}`);
+            if (!res.ok) throw new Error('Character not found');
+            
+            let char = await res.json();
+            
+            let html = `
+            <div class="detail-header">
+                <a href="/" class="btn btn-secondary">← Back</a>
+                <h1 class="detail-title">${char.name}</h1>
+                <span class="detail-subtitle">${char.title}</span>
+            </div>
+
+            <div class="detail-content">
+                <div class="detail-image-section">
+                    <img src="${char.image}" alt="${char.name}" class="detail-image">
+                </div>
+
+                <div class="detail-info">
+                    <div class="info-section">
+                        <h3>Stats</h3>
+                        <div class="stats-grid">
+                            <div class="stat-block">
+                                <span class="stat-label">Magic Power</span>
+                                <div class="stat-bar">
+                                    <div class="stat-fill" style="width: ${char.magic_power}%"></div>
+                                </div>
+                                <span class="stat-value">${char.magic_power}/100</span>
+                            </div>
+                            <div class="stat-block">
+                                <span class="stat-label">Physical Power</span>
+                                <div class="stat-bar">
+                                    <div class="stat-fill" style="width: ${char.physical_power}%"></div>
+                                </div>
+                                <span class="stat-value">${char.physical_power}/100</span>
+                            </div>
+                            <div class="stat-block">
+                                <span class="stat-label">Defense</span>
+                                <div class="stat-bar">
+                                    <div class="stat-fill" style="width: ${char.defense}%"></div>
+                                </div>
+                                <span class="stat-value">${char.defense}/100</span>
+                            </div>
+                            <div class="stat-block">
+                                <span class="stat-label">Speed</span>
+                                <div class="stat-bar">
+                                    <div class="stat-fill" style="width: ${char.speed}%"></div>
+                                </div>
+                                <span class="stat-value">${char.speed}/100</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-section">
+                        <h3>Information</h3>
+                        <table class="info-table">
+                            <tr>
+                                <td class="label">Weapon</td>
+                                <td>🗡️ ${char.weapon}</td>
+                            </tr>
+                            <tr>
+                                <td class="label">Overall Score</td>
+                                <td>${char.overall_score.toFixed(1)}/100</td>
+                            </tr>
+                            <tr>
+                                <td class="label">Total Battles</td>
+                                <td>${char.total_battles}</td>
+                            </tr>
+                            <tr>
+                                <td class="label">Battle Wins</td>
+                                <td>${char.total_wins}</td>
+                            </tr>
+                            <tr>
+                                <td class="label">Win Rate</td>
+                                <td>${char.win_rate}%</td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <div class="info-section">
+                        <h3>Community Rating</h3>
+                        <div class="rating-display">
+                            <div class="rating-large">
+                                <span class="rating-value">${char.avg_rating}</span>
+                                <span class="rating-max">/5.0</span>
+                            </div>
+                            <span class="rating-count">Based on ${char.review_count} reviews</span>
+                        </div>
+                    </div>
+
+                    <div class="info-section">
+                        <h3>Description</h3>
+                        <p class="description">${char.description || 'No description available.'}</p>
+                    </div>
+
+                    <div class="action-buttons">
+                        <button class="btn btn-primary" onclick="editCharacter()">Edit Character</button>
+                        <button class="btn btn-secondary" onclick="goToBattle()">Battle with this Character</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="reviews-section">
+                <h2>Community Reviews</h2>
+                <div id="reviews-list" class="reviews-list"></div>
+            </div>
+            `;
+
+            document.getElementById("character-detail").innerHTML = html;
+            loadReviews(charId);
+
+        } catch (error) {
+            console.error("Error:", error);
+            document.getElementById("character-detail").innerHTML = '<p class="error">Error loading character</p>';
+        }
+    }
+
+    async function loadReviews(charId) {
+        try {
+            let res = await fetch(`/api/reviews?character_id=${charId}`);
+            let reviews = await res.json();
+
+            let html = '';
+            if (reviews.length === 0) {
+                html = '<p class="no-data">No reviews yet. Be the first to review!</p>';
+            } else {
+                reviews.forEach(review => {
+                    html += `
+                    <div class="review-card">
+                        <div class="review-header">
+                            <h4>${review.title}</h4>
+                            <span class="review-rating">⭐ ${review.rating}/5</span>
+                        </div>
+                        <p class="review-author">by ${review.username}</p>
+                        <p class="review-content">${review.content}</p>
+                        <p class="review-date">${new Date(review.created_at).toLocaleDateString()}</p>
+                    </div>
+                    `;
+                });
+            }
+
+            document.getElementById("reviews-list").innerHTML = html;
+        } catch (error) {
+            console.error("Error loading reviews:", error);
+        }
+    }
+
+    function editCharacter() {
+        let charId = getCharId();
+        window.location.href = `/add-character?edit=${charId}`;
+    }
+
+    function goToBattle() {
+        let charId = getCharId();
+        window.location.href = `/game-theory?char1=${charId}`;
+    }
+
+    loadCharacter();
+</script>
+
+</body>
+</html>

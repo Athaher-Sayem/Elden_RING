@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Elden Ring DBMS - Character Database</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="nav-container">
+        <h1 class="nav-title">⚔ ELDEN RING DBMS</h1>
+        <ul class="nav-menu">
+            <li><a href="/" class="nav-link active">Home</a></li>
+            <li><a href="/add-character" class="nav-link">Add Character</a></li>
+            <li><a href="/reviews" class="nav-link">Reviews</a></li>
+            <li><a href="/game-theory" class="nav-link">Battle Arena</a></li>
+            <li><a href="/analytics" class="nav-link">Analytics</a></li>
+        </ul>
+    </div>
+</nav>
+
+<div class="container">
+    <div class="hero-section">
+        <h1>⚔ Character Database Management System</h1>
+        <p>Advanced DBMS with Game Theory, Reviews & Analytics</p>
+    </div>
+
+    <div class="search-section">
+        <div class="search-controls">
+            <input 
+                type="text" 
+                id="search" 
+                class="search-input"
+                placeholder="🔍 Search characters by name..." 
+                onkeyup="load()"
+            >
+            <button id="top20-btn" class="control-btn" onclick="toggleTop20()">Show Top 20</button>
+            <button id="shuffle-btn" class="control-btn" onclick="shuffleCharacters()">Shuffle</button>
+            <select id="sort-select" class="sort-select" onchange="load()">
+                <option value="name">Sort by: Name</option>
+                <option value="magic">Sort by: Magic Power</option>
+                <option value="physical">Sort by: Physical Power</option>
+                <option value="overall">Sort by: Overall Score</option>
+            </select>
+        </div>
+    </div>
+
+    <div id="stats-section" class="stats-section">
+        <div class="stat-card">
+            <div class="stat-number" id="total-chars">0</div>
+            <div class="stat-label">Total Characters</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="total-battles">0</div>
+            <div class="stat-label">Total Battles</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="avg-rating">0</div>
+            <div class="stat-label">Average Rating</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="total-reviews">0</div>
+            <div class="stat-label">Total Reviews</div>
+        </div>
+    </div>
+
+    <div id="container" class="characters-grid"></div>
+
+</div>
+
+<script src="/static/script.js"></script>
+<script>
+let editId = null;
+let top20 = false;
+let shuffle = false;
+
+async function load() {
+    try {
+        let q = document.getElementById("search").value;
+        let sort = document.getElementById("sort-select").value;
+        
+        let res = await fetch("/api/characters?q=" + q + "&sort=" + sort);
+        let data = await res.json();
+
+        let html = "";
+
+        // optionally shuffle and/or limit to top 20 for a concise home view
+        if (shuffle) {
+            for (let i = data.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [data[i], data[j]] = [data[j], data[i]];
+            }
+        }
+        if (top20) data = data.slice(0, 20);
+
+        data.forEach(c => {
+            html += `
+            <div class="card">
+                <div class="card-image-container">
+                    <img src="${c.image}" alt="${c.name}" class="card-image">
+                    <div class="card-overlay">
+                        <a href="/character/${c.id}" class="btn-view-details">View Details</a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <h2 class="card-title">${c.name}</h2>
+                    <p class="card-subtitle">${c.title}</p>
+                    <p class="card-desc">${c.description ? (c.description.length>120 ? c.description.substring(0,120)+"..." : c.description) : ''}</p>
+                    
+                    <div class="card-stats">
+                        <div class="stat-item">
+                            <span class="stat-icon">⚡</span>
+                            <span class="stat-text">Magic: ${c.magic_power}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-icon">💪</span>
+                            <span class="stat-text">Physical: ${c.physical_power}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-icon">🛡️</span>
+                            <span class="stat-text">Defense: ${c.defense}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-icon">⚡</span>
+                            <span class="stat-text">Speed: ${c.speed}</span>
+                        </div>
+                    </div>
+
+                    <div class="card-rating">
+                        <span class="rating-stars">⭐ ${c.avg_rating}/5</span>
+                        <span class="rating-count">(${c.review_count} reviews)</span>
+                    </div>
+
+                    <div class="card-weapon">
+                        <span class="weapon-icon">🗡️</span>
+                        <span class="weapon-name">${c.weapon}</span>
+                    </div>
+
+                    <div class="card-actions">
+                        <a href="/character/${c.id}" class="btn btn-primary">Details</a>
+                        <button class="btn btn-secondary" onclick="editCharacter(${c.id})">Edit</button>
+                        <button class="btn btn-danger" onclick="deleteCharacter(${c.id})">Delete</button>
+                    </div>
+                </div>
+            </div>
+            `;
+        });
+
+        document.getElementById("container").innerHTML = html;
+
+        // Load statistics
+        await loadStats();
+
+    } catch (error) {
+        console.error("Error loading characters:", error);
+        document.getElementById("container").innerHTML = '<p class="error">Error loading characters</p>';
+    }
+}
+
+function toggleTop20(){
+    top20 = !top20;
+    document.getElementById('top20-btn').textContent = top20 ? 'Showing Top 20' : 'Show Top 20';
+    load();
+}
+
+function shuffleCharacters(){
+    shuffle = !shuffle;
+    document.getElementById('shuffle-btn').textContent = shuffle ? 'Shuffle: ON' : 'Shuffle';
+    load();
+}
+
+async function loadStats() {
+    try {
+        let res = await fetch("/api/analytics/database-stats");
+        let stats = await res.json();
+        
+        document.getElementById("total-chars").textContent = stats.total_characters;
+        document.getElementById("total-battles").textContent = stats.total_battles;
+        document.getElementById("avg-rating").textContent = stats.avg_character_rating;
+        document.getElementById("total-reviews").textContent = stats.total_reviews;
+    } catch (error) {
+        console.error("Error loading stats:", error);
+    }
+}
+
+async function editCharacter(id) {
+    // Redirect to character detail page for editing
+    window.location.href = `/character/${id}`;
+}
+
+async function deleteCharacter(id) {
+    if (confirm("Are you sure you want to delete this character?")) {
+        try {
+            let res = await fetch("/api/characters/" + id, {method: "DELETE"});
+            if (res.ok) {
+                alert("Character deleted successfully!");
+                load();
+            } else {
+                alert("Error deleting character");
+            }
+        } catch (error) {
+            console.error("Error:", error);
+            alert("Error deleting character");
+        }
+    }
+}
+
+// Initial load
+load();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Analytics Dashboard - Elden Ring DBMS</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="nav-container">
+        <h1 class="nav-title">⚔ ELDEN RING DBMS</h1>
+        <ul class="nav-menu">
+            <li><a href="/" class="nav-link">Home</a></li>
+            <li><a href="/add-character" class="nav-link">Add Character</a></li>
+            <li><a href="/reviews" class="nav-link">Reviews</a></li>
+            <li><a href="/game-theory" class="nav-link">Battle Arena</a></li>
+            <li><a href="/analytics" class="nav-link active">Analytics</a></li>
+        </ul>
+    </div>
+</nav>
+
+<div class="container">
+    <div class="hero-section">
+        <h1>📊 Analytics Dashboard</h1>
+        <p>Advanced DBMS Analysis with JOIN Queries & Aggregations</p>
+    </div>
+
+    <div class="analytics-grid">
+        <div class="stat-card-large">
+            <div class="card-header">Database Statistics</div>
+            <div id="db-stats" class="stats-table"></div>
+        </div>
+    </div>
+
+    <div class="analytics-sections">
+        <div class="analytics-section">
+            <h2>🏆 Top Characters by Rating</h2>
+            <div id="top-rated" class="ranking-list"></div>
+        </div>
+
+        <div class="analytics-section">
+            <h2>📝 Most Reviewed Characters</h2>
+            <div id="most-reviewed" class="ranking-list"></div>
+        </div>
+
+        <div class="analytics-section">
+            <h2>⚔ Battle Statistics</h2>
+            <div id="battle-stats" class="ranking-list"></div>
+        </div>
+    </div>
+
+    <div class="analytics-section wide">
+        <h2>🔍 Advanced Search & Filtering</h2>
+        <div class="search-panel">
+            <div class="search-row">
+                <div class="search-group">
+                    <label>Character Name or Title</label>
+                    <input type="text" id="search-query" placeholder="Search...">
+                </div>
+                <div class="search-group">
+                    <label>Magic Power Range</label>
+                    <input type="number" id="min-magic" placeholder="Min" min="0" max="100" value="0">
+                    <input type="number" id="max-magic" placeholder="Max" min="0" max="100" value="100">
+                </div>
+                <div class="search-group">
+                    <label>Minimum Rating</label>
+                    <input type="number" id="min-rating" placeholder="Min rating" min="0" max="5" step="0.5" value="0">
+                </div>
+                <button class="btn btn-primary" onclick="performAdvancedSearch()">Search</button>
+            </div>
+            <div id="search-results" class="search-results"></div>
+        </div>
+    </div>
+
+    <div class="analytics-section wide">
+        <h2>🎯 Character Comparison</h2>
+        <div class="comparison-panel">
+            <div class="comparison-select">
+                <label>Select Characters to Compare</label>
+                <div class="character-checkboxes" id="char-checkboxes"></div>
+                <button class="btn btn-primary" onclick="performComparison()">Compare</button>
+            </div>
+            <div id="comparison-results" class="comparison-results"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function loadDatabaseStats() {
+        try {
+            let res = await fetch("/api/analytics/database-stats");
+            let stats = await res.json();
+
+            let html = `
+            <table class="stats-table">
+                <tr>
+                    <td class="label">Total Characters</td>
+                    <td class="value">${stats.total_characters}</td>
+                </tr>
+                <tr>
+                    <td class="label">Total Users</td>
+                    <td class="value">${stats.total_users}</td>
+                </tr>
+                <tr>
+                    <td class="label">Total Reviews</td>
+                    <td class="value">${stats.total_reviews}</td>
+                </tr>
+                <tr>
+                    <td class="label">Total Ratings</td>
+                    <td class="value">${stats.total_ratings}</td>
+                </tr>
+                <tr>
+                    <td class="label">Total Battles Simulated</td>
+                    <td class="value">${stats.total_battles}</td>
+                </tr>
+                <tr>
+                    <td class="label">Average Character Rating</td>
+                    <td class="value">⭐ ${stats.avg_character_rating}/5.0</td>
+                </tr>
+                ${stats.most_rated_character ? `
+                <tr class="highlight">
+                    <td class="label">Most Rated Character</td>
+                    <td class="value">${stats.most_rated_character.name} (${stats.most_rated_character.rating_count} ratings)</td>
+                </tr>
+                ` : ''}
+                ${stats.most_reviewed_character ? `
+                <tr class="highlight">
+                    <td class="label">Most Reviewed Character</td>
+                    <td class="value">${stats.most_reviewed_character.name} (${stats.most_reviewed_character.review_count} reviews)</td>
+                </tr>
+                ` : ''}
+                ${stats.most_battled_character ? `
+                <tr class="highlight">
+                    <td class="label">Most Battled Character</td>
+                    <td class="value">${stats.most_battled_character.name} (${stats.most_battled_character.battle_count} battles)</td>
+                </tr>
+                ` : ''}
+            </table>
+            `;
+
+            document.getElementById("db-stats").innerHTML = html;
+        } catch (error) {
+            console.error("Error:", error);
+        }
+    }
+
+    async function loadTopCharacters() {
+        try {
+            // Top rated
+            let res1 = await fetch("/api/analytics/top-characters?metric=rating&limit=5");
+            let topRated = await res1.json();
+            
+            let html1 = '';
+            topRated.forEach((item, i) => {
+                html1 += `
+                <div class="rank-item">
+                    <span class="rank-position">#${i + 1}</span>
+                    <div class="rank-info">
+                        <strong>${item.character.name}</strong>
+                        <p>${item.character.title}</p>
+                    </div>
+                    <div class="rank-metric">
+                        <span class="metric-value">⭐ ${item.avg_rating}/5</span>
+                        <span class="metric-subtext">${item.rating_count} ratings</span>
+                    </div>
+                </div>
+                `;
+            });
+            document.getElementById("top-rated").innerHTML = html1;
+
+            // Most reviewed
+            let res2 = await fetch("/api/analytics/top-characters?metric=reviews&limit=5");
+            let mostReviewed = await res2.json();
+            
+            let html2 = '';
+            mostReviewed.forEach((item, i) => {
+                html2 += `
+                <div class="rank-item">
+                    <span class="rank-position">#${i + 1}</span>
+                    <div class="rank-info">
+                        <strong>${item.character.name}</strong>
+                        <p>${item.character.title}</p>
+                    </div>
+                    <div class="rank-metric">
+                        <span class="metric-value">📝 ${item.review_count}</span>
+                        <span class="metric-subtext">reviews</span>
+                    </div>
+                </div>
+                `;
+            });
+            document.getElementById("most-reviewed").innerHTML = html2;
+
+            // Battle stats
+            let res3 = await fetch("/api/analytics/top-characters?metric=battles&limit=5");
+            let battleStats = await res3.json();
+            
+            let html3 = '';
+            battleStats.forEach((item, i) => {
+                html3 += `
+                <div class="rank-item">
+                    <span class="rank-position">#${i + 1}</span>
+                    <div class="rank-info">
+                        <strong>${item.character.name}</strong>
+                        <p>${item.character.title}</p>
+                    </div>
+                    <div class="rank-metric">
+                        <span class="metric-value">⚔ ${item.total_wins}/${item.total_battles}</span>
+                        <span class="metric-subtext">${item.win_rate}% win rate</span>
+                    </div>
+                </div>
+                `;
+            });
+            document.getElementById("battle-stats").innerHTML = html3;
+
+        } catch (error) {
+            console.error("Error:", error);
+        }
+    }
+
+    async function loadCharactersForComparison() {
+        try {
+            let res = await fetch("/api/characters");
+            let chars = await res.json();
+
+            let html = '';
+            chars.forEach(char => {
+                html += `
+                <label class="checkbox-item">
+                    <input type="checkbox" class="char-checkbox" value="${char.id}">
+                    <span>${char.name}</span>
+                </label>
+                `;
+            });
+
+            document.getElementById("char-checkboxes").innerHTML = html;
+        } catch (error) {
+            console.error("Error:", error);
+        }
+    }
+
+    async function performAdvancedSearch() {
+        try {
+            let query = document.getElementById("search-query").value;
+            let minMagic = document.getElementById("min-magic").value;
+            let maxMagic = document.getElementById("max-magic").value;
+            let minRating = document.getElementById("min-rating").value;
+
+            let url = `/api/analytics/search?q=${query}&min_magic=${minMagic}&max_magic=${maxMagic}&min_rating=${minRating}`;
+            
+            let res = await fetch(url);
+            let results = await res.json();
+
+            let html = '';
+            if (results.length === 0) {
+                html = '<p class="no-data">No characters found matching criteria</p>';
+            } else {
+                html = '<div class="search-grid">';
+                results.forEach(char => {
+                    html += `
+                    <div class="search-result-card">
+                        <h3>${char.name}</h3>
+                        <p>${char.title}</p>
+                        <div class="result-stats">
+                            <span>⚡ Magic: ${char.magic_power}</span>
+                            <span>💪 Physical: ${char.physical_power}</span>
+                            <span>🛡️ Defense: ${char.defense}</span>
+                            <span>⚡ Speed: ${char.speed}</span>
+                        </div>
+                        <p>Rating: ⭐ ${char.avg_rating}/5 (${char.review_count} reviews)</p>
+                        <a href="/character/${char.id}" class="btn btn-small">View</a>
+                    </div>
+                    `;
+                });
+                html += '</div>';
+            }
+
+            document.getElementById("search-results").innerHTML = html;
+        } catch (error) {
+            console.error("Error:", error);
+        }
+    }
+
+    async function performComparison() {
+        try {
+            let selected = Array.from(document.querySelectorAll(".char-checkbox:checked"))
+                .map(cb => cb.value)
+                .join("&ids=");
+
+            if (!selected) {
+                alert("Select at least one character");
+                return;
+            }
+
+            let res = await fetch(`/api/analytics/character-comparison?ids=${selected}`);
+            let results = await res.json();
+
+            let html = '<div class="comparison-table">';
+            
+            if (results.length === 0) {
+                html += '<p class="no-data">No data available</p>';
+            } else {
+                html += `
+                <table class="comparison-table-data">
+                    <thead>
+                        <tr>
+                            <th>Character</th>
+                            <th>Magic</th>
+                            <th>Physical</th>
+                            <th>Defense</th>
+                            <th>Speed</th>
+                            <th>Score</th>
+                            <th>Rating</th>
+                            <th>Reviews</th>
+                            <th>Win Rate</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                `;
+
+                results.forEach(comp => {
+                    html += `
+                    <tr>
+                        <td><strong>${comp.character.name}</strong></td>
+                        <td>${comp.character.magic_power}</td>
+                        <td>${comp.character.physical_power}</td>
+                        <td>${comp.character.defense}</td>
+                        <td>${comp.character.speed}</td>
+                        <td>${comp.power_score.toFixed(1)}</td>
+                        <td>⭐ ${comp.avg_rating}/5</td>
+                        <td>${comp.review_count}</td>
+                        <td>${comp.win_rate}%</td>
+                    </tr>
+                    `;
+                });
+
+                html += `
+                    </tbody>
+                </table>
+                `;
+            }
+
+            html += '</div>';
+            document.getElementById("comparison-results").innerHTML = html;
+
+        } catch (error) {
+            console.error("Error:", error);
+        }
+    }
+
+    // Initialize
+    loadDatabaseStats();
+    loadTopCharacters();
+    loadCharactersForComparison();
+</script>
+
+</body>
+</html>

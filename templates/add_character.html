@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Add/Edit Character - Elden Ring DBMS</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="nav-container">
+        <h1 class="nav-title">⚔ ELDEN RING DBMS</h1>
+        <ul class="nav-menu">
+            <li><a href="/" class="nav-link">Home</a></li>
+            <li><a href="/add-character" class="nav-link active">Add Character</a></li>
+            <li><a href="/reviews" class="nav-link">Reviews</a></li>
+            <li><a href="/game-theory" class="nav-link">Battle Arena</a></li>
+            <li><a href="/analytics" class="nav-link">Analytics</a></li>
+        </ul>
+    </div>
+</nav>
+
+<div class="container">
+    <div class="form-section">
+        <h1 id="form-title">Add New Character</h1>
+        
+        <form id="character-form" class="character-form">
+            <div class="form-group">
+                <label>Character Name *</label>
+                <input type="text" id="name" placeholder="e.g., Malenia" required>
+            </div>
+
+            <div class="form-group">
+                <label>Title *</label>
+                <input type="text" id="title" placeholder="e.g., Blade of Miquella" required>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Magic Power (0-100)</label>
+                    <input type="number" id="magic_power" min="0" max="100" value="50">
+                    <div class="stat-preview" id="magic-preview"></div>
+                </div>
+
+                <div class="form-group">
+                    <label>Physical Power (0-100)</label>
+                    <input type="number" id="physical_power" min="0" max="100" value="50">
+                    <div class="stat-preview" id="physical-preview"></div>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Defense (0-100)</label>
+                    <input type="number" id="defense" min="0" max="100" value="50">
+                    <div class="stat-preview" id="defense-preview"></div>
+                </div>
+
+                <div class="form-group">
+                    <label>Speed (0-100)</label>
+                    <input type="number" id="speed" min="0" max="100" value="50">
+                    <div class="stat-preview" id="speed-preview"></div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Weapon</label>
+                <input type="text" id="weapon" placeholder="e.g., Waterfowl Dance">
+            </div>
+
+            <div class="form-group">
+                <label>Image URL</label>
+                <input type="url" id="image" placeholder="https://example.com/image.jpg">
+                <div id="image-preview" class="image-preview"></div>
+            </div>
+
+            <div class="form-group">
+                <label>Description</label>
+                <textarea id="description" rows="4" placeholder="Character description..."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>Overall Score</label>
+                <div class="overall-score-display" id="overall-score">0/100</div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Save Character</button>
+                <a href="/" class="btn btn-secondary">Cancel</a>
+            </div>
+
+            <div id="message" class="message"></div>
+        </form>
+    </div>
+</div>
+
+<script>
+    let editCharId = null;
+
+    // Get edit ID from URL params
+    function getEditId() {
+        let params = new URLSearchParams(window.location.search);
+        return params.get('edit');
+    }
+
+    async function loadCharacterForEdit() {
+        editCharId = getEditId();
+        if (!editCharId) return;
+
+        try {
+            let res = await fetch(`/api/characters/${editCharId}`);
+            if (!res.ok) throw new Error('Character not found');
+            
+            let char = await res.json();
+            
+            document.getElementById("form-title").textContent = `Edit ${char.name}`;
+            document.getElementById("name").value = char.name;
+            document.getElementById("title").value = char.title;
+            document.getElementById("magic_power").value = char.magic_power;
+            document.getElementById("physical_power").value = char.physical_power;
+            document.getElementById("defense").value = char.defense;
+            document.getElementById("speed").value = char.speed;
+            document.getElementById("weapon").value = char.weapon;
+            document.getElementById("image").value = char.image;
+            document.getElementById("description").value = char.description || '';
+            
+            updatePreviews();
+        } catch (error) {
+            console.error("Error loading character:", error);
+            alert("Error loading character for editing");
+        }
+    }
+
+    function updatePreviews() {
+        // Update stat previews
+        let magic = parseInt(document.getElementById("magic_power").value) || 0;
+        let physical = parseInt(document.getElementById("physical_power").value) || 0;
+        let defense = parseInt(document.getElementById("defense").value) || 0;
+        let speed = parseInt(document.getElementById("speed").value) || 0;
+
+        document.getElementById("magic-preview").style.width = magic + "%";
+        document.getElementById("physical-preview").style.width = physical + "%";
+        document.getElementById("defense-preview").style.width = defense + "%";
+        document.getElementById("speed-preview").style.width = speed + "%";
+
+        // Update overall score
+        let overall = ((magic + physical + defense + speed) / 4).toFixed(1);
+        document.getElementById("overall-score").textContent = overall + "/100";
+
+        // Update image preview
+        let imageUrl = document.getElementById("image").value;
+        if (imageUrl) {
+            document.getElementById("image-preview").innerHTML = `<img src="${imageUrl}" alt="preview" style="max-width: 200px; max-height: 200px;">`;
+        }
+    }
+
+    document.getElementById("character-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        try {
+            let data = {
+                name: document.getElementById("name").value,
+                title: document.getElementById("title").value,
+                magic_power: parseInt(document.getElementById("magic_power").value),
+                physical_power: parseInt(document.getElementById("physical_power").value),
+                defense: parseInt(document.getElementById("defense").value),
+                speed: parseInt(document.getElementById("speed").value),
+                weapon: document.getElementById("weapon").value,
+                image: document.getElementById("image").value,
+                description: document.getElementById("description").value
+            };
+
+            let url = editCharId ? `/api/characters/${editCharId}` : `/api/characters`;
+            let method = editCharId ? "POST" : "POST";
+
+            let res = await fetch(url, {
+                method: method,
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+
+            let result = await res.json();
+
+            if (!res.ok) {
+                throw new Error(result.error || "Error saving character");
+            }
+
+            showMessage("Character saved successfully!", "success");
+            setTimeout(() => window.location.href = "/", 1500);
+
+        } catch (error) {
+            console.error("Error:", error);
+            showMessage(error.message, "error");
+        }
+    });
+
+    function showMessage(text, type) {
+        let msg = document.getElementById("message");
+        msg.textContent = text;
+        msg.className = "message " + type;
+        msg.style.display = "block";
+    }
+
+    // Add event listeners for live previews
+    document.getElementById("magic_power").addEventListener("input", updatePreviews);
+    document.getElementById("physical_power").addEventListener("input", updatePreviews);
+    document.getElementById("defense").addEventListener("input", updatePreviews);
+    document.getElementById("speed").addEventListener("input", updatePreviews);
+    document.getElementById("image").addEventListener("change", updatePreviews);
+
+    // Load for editing if needed
+    loadCharacterForEdit();
+    updatePreviews();
+</script>
+
+</body>
+</html>

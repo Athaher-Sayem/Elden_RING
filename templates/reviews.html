@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Reviews - Elden Ring DBMS</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="nav-container">
+        <h1 class="nav-title">⚔ ELDEN RING DBMS</h1>
+        <ul class="nav-menu">
+            <li><a href="/" class="nav-link">Home</a></li>
+            <li><a href="/add-character" class="nav-link">Add Character</a></li>
+            <li><a href="/reviews" class="nav-link active">Reviews</a></li>
+            <li><a href="/game-theory" class="nav-link">Battle Arena</a></li>
+            <li><a href="/analytics" class="nav-link">Analytics</a></li>
+        </ul>
+    </div>
+</nav>
+
+<div class="container">
+    <div class="hero-section">
+        <h1>Community Reviews & Ratings</h1>
+        <p>Share your thoughts about each character</p>
+    </div>
+
+    <div class="reviews-panel">
+        <div class="review-form-section">
+            <h2>Add a Review</h2>
+            <form id="review-form" class="review-form">
+                <div class="form-group">
+                    <label>Character *</label>
+                    <select id="character-select" required>
+                        <option value="">Select a character...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>User *</label>
+                    <select id="user-select" required>
+                        <option value="">Select a user...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Review Title *</label>
+                    <input type="text" id="review-title" placeholder="e.g., Amazing character!" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Your Review *</label>
+                    <textarea id="review-content" rows="4" placeholder="Share your thoughts..." required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Rating *</label>
+                    <div class="rating-selector">
+                        <input type="radio" name="rating" value="1" id="r1"> <label for="r1">⭐</label>
+                        <input type="radio" name="rating" value="2" id="r2"> <label for="r2">⭐⭐</label>
+                        <input type="radio" name="rating" value="3" id="r3"> <label for="r3">⭐⭐⭐</label>
+                        <input type="radio" name="rating" value="4" id="r4"> <label for="r4">⭐⭐⭐⭐</label>
+                        <input type="radio" name="rating" value="5" id="r5" checked> <label for="r5">⭐⭐⭐⭐⭐</label>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Submit Review</button>
+            </form>
+        </div>
+
+        <div class="reviews-list-section">
+            <h2>Recent Reviews</h2>
+            <div class="filters-section">
+                <input type="text" id="search-reviews" placeholder="🔍 Search reviews..." onkeyup="filterReviews()">
+                <select id="sort-reviews" onchange="loadReviews()">
+                    <option value="recent">Sort: Most Recent</option>
+                    <option value="rating">Sort: Highest Rated</option>
+                    <option value="oldest">Sort: Oldest</option>
+                </select>
+            </div>
+            <div id="reviews-container" class="reviews-container"></div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    async function loadCharacters() {
+        try {
+            let res = await fetch("/api/characters");
+            let chars = await res.json();
+            
+            let select = document.getElementById("character-select");
+            chars.forEach(char => {
+                let option = document.createElement("option");
+                option.value = char.id;
+                option.textContent = char.name;
+                select.appendChild(option);
+            });
+        } catch (error) {
+            console.error("Error loading characters:", error);
+        }
+    }
+
+    async function loadUsers() {
+        try {
+            let res = await fetch("/api/users");
+            let users = await res.json();
+            
+            let select = document.getElementById("user-select");
+            users.forEach(user => {
+                let option = document.createElement("option");
+                option.value = user.id;
+                option.textContent = user.username + " (" + user.email + ")";
+                select.appendChild(option);
+            });
+        } catch (error) {
+            console.error("Error loading users:", error);
+        }
+    }
+
+    async function loadReviews() {
+        try {
+            let res = await fetch("/api/reviews");
+            let reviews = await res.json();
+
+            // Sort by option
+            let sort = document.getElementById("sort-reviews").value;
+            if (sort === "rating") {
+                reviews.sort((a, b) => b.rating - a.rating);
+            } else if (sort === "oldest") {
+                reviews.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+            } else {
+                reviews.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            }
+
+            displayReviews(reviews);
+        } catch (error) {
+            console.error("Error loading reviews:", error);
+        }
+    }
+
+    function displayReviews(reviews) {
+        let container = document.getElementById("reviews-container");
+        
+        if (reviews.length === 0) {
+            container.innerHTML = '<p class="no-data">No reviews yet. Be the first!</p>';
+            return;
+        }
+
+        let html = '';
+        reviews.forEach(review => {
+            html += `
+            <div class="review-item">
+                <div class="review-header">
+                    <h3>${review.title}</h3>
+                    <span class="review-rating">
+                        ${'⭐'.repeat(review.rating)} ${review.rating}/5
+                    </span>
+                </div>
+                <p class="review-meta">by <strong>${review.username}</strong> on <em>${new Date(review.created_at).toLocaleDateString()}</em></p>
+                <p class="review-text">${review.content}</p>
+                <div class="review-actions">
+                    <button class="btn-small" onclick="deleteReview(${review.id})">Delete</button>
+                </div>
+            </div>
+            `;
+        });
+
+        container.innerHTML = html;
+    }
+
+    function filterReviews() {
+        let search = document.getElementById("search-reviews").value.toLowerCase();
+        let items = document.querySelectorAll(".review-item");
+        
+        items.forEach(item => {
+            let text = item.textContent.toLowerCase();
+            item.style.display = text.includes(search) ? "block" : "none";
+        });
+    }
+
+    async function deleteReview(id) {
+        if (confirm("Delete this review?")) {
+            try {
+                let res = await fetch(`/api/reviews/${id}`, { method: "DELETE" });
+                if (res.ok) {
+                    loadReviews();
+                }
+            } catch (error) {
+                console.error("Error:", error);
+            }
+        }
+    }
+
+    document.getElementById("review-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        try {
+            let rating = document.querySelector('input[name="rating"]:checked').value;
+            
+            let data = {
+                character_id: parseInt(document.getElementById("character-select").value),
+                user_id: parseInt(document.getElementById("user-select").value),
+                title: document.getElementById("review-title").value,
+                content: document.getElementById("review-content").value,
+                rating: parseInt(rating)
+            };
+
+            let res = await fetch("/api/reviews", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+
+            if (!res.ok) throw new Error("Error submitting review");
+
+            alert("Review submitted successfully!");
+            document.getElementById("review-form").reset();
+            document.getElementById("r5").checked = true;
+            loadReviews();
+
+        } catch (error) {
+            console.error("Error:", error);
+            alert("Error submitting review: " + error.message);
+        }
+    });
+
+    // Load data on page load
+    loadCharacters();
+    loadUsers();
+    loadReviews();
+</script>
+
+</body>
+</html>
